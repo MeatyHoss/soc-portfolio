@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>THM Phishing Sim — Hossam Hashem</title>
+  <link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="container">
+      <span>soc-portfolio / investigations / thm-phishing-sim</span>
+      <span class="status">CLOSED — All TPs Identified</span>
+    </div>
+  </div>
+
+  <div class="report-body">
+
+    <a class="back-link" href="../index.html">← Back to case log</a>
+
+    <div class="closed-banner">✔ Case closed — 3 True Positives · 2 False Positives</div>
+
+    <h1>THM SOC Sim — Phishing Investigation</h1>
+
+    <div class="report-meta">
+      <span class="key">Platform</span>  <span class="val">TryHackMe SOC Simulator</span>
+      <span class="key">SIEM</span>      <span class="val">Splunk</span>
+      <span class="key">Category</span> <span class="val">Phishing / Email Analysis</span>
+      <span class="key">Date</span>     <span class="val">May 2025</span>
+      <span class="key">Analyst</span>  <span class="val">Hossam Hashem</span>
+    </div>
+
+    <!-- What happened -->
+    <h2>// What Happened</h2>
+    <p>
+      Got 5 alerts in the queue, all phishing-related. Mix of inbound email alerts and one firewall
+      block. Went through each one to figure out what's real and what's noise.
+    </p>
+
+    <!-- Alert summary table -->
+    <h2>// Alert Summary</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Alert ID</th>
+            <th>Rule</th>
+            <th>Verdict</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>#8814</td>
+            <td>Inbound Email — Suspicious External Link</td>
+            <td class="verdict-fp-cell">False Positive</td>
+          </tr>
+          <tr>
+            <td>#8815</td>
+            <td>Inbound Email — Suspicious External Link</td>
+            <td class="verdict-fp-cell">False Positive</td>
+          </tr>
+          <tr>
+            <td>#8816</td>
+            <td>Access to Blacklisted URL — Blocked by Firewall</td>
+            <td class="verdict-tp-cell">True Positive</td>
+          </tr>
+          <tr>
+            <td>#8817</td>
+            <td>Inbound Email — Suspicious External Link</td>
+            <td class="verdict-tp-cell">True Positive</td>
+          </tr>
+          <tr>
+            <td>#8818</td>
+            <td>Inbound Email — Suspicious External Link</td>
+            <td class="verdict-tp-cell">True Positive</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Alert breakdown -->
+    <h2>// Alert Breakdown</h2>
+
+    <div class="alert-block fp">
+      <strong>#8814 &amp; #8815 — False Positives</strong>
+      <p style="margin-top:.5rem; margin-bottom:0;">
+        Both were legitimate emails that happened to contain external links. #8814 was an HR
+        onboarding email sent to a new employee (j.garcia), linking to <code>hrconnex.thm</code> —
+        clean domain, no endpoint activity in proxy logs. #8815 was similar. The detection rule is
+        too broad; it flags anything with an external link regardless of context.
+      </p>
+    </div>
+
+    <div class="alert-block tp">
+      <strong>#8817 &amp; #8818 — True Positives</strong>
+      <p style="margin-top:.5rem; margin-bottom:.5rem;">
+        These were the real ones. #8817 was a fake Amazon delivery email pushing the recipient to
+        click a bit.ly link under a 48-hour urgency threat. Sender domain didn't match Amazon's
+        actual infrastructure. Ran the link through VirusTotal — flagged as phishing. Confirmed in
+        Splunk proxy logs that the user actually clicked it:
+      </p>
+<pre>index=main sourcetype=proxy dest_domain="bit.ly"
+| table _time, src_ip, dest_url, action</pre>
+      <p style="margin-bottom:0;">
+        #8818 was the same pattern, different sender spoof.
+      </p>
+    </div>
+
+    <div class="alert-block tp">
+      <strong>#8816 — True Positive (firewall block)</strong>
+      <p style="margin-top:.5rem; margin-bottom:0;">
+        This one made sense once I connected it to #8817. The user clicked the bit.ly link; the
+        firewall caught it and blocked the outbound connection. So #8816 wasn't a standalone event
+        — it was the follow-on from the phishing email being clicked. Always worth correlating
+        firewall blocks with email alerts around the same timestamp.
+      </p>
+    </div>
+
+    <!-- IOCs -->
+    <h2>// IOCs</h2>
+    <div class="table-wrap">
+      <table class="ioc-table">
+        <thead>
+          <tr><th>Type</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>URL</td>
+            <td><code>http://bit.ly/3sHkX3da12340</code></td>
+          </tr>
+          <tr>
+            <td>Sender</td>
+            <td>Spoofed Amazon look-alike domain</td>
+          </tr>
+          <tr>
+            <td>Destination</td>
+            <td>Phishing site (flagged on VirusTotal)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- MITRE -->
+    <h2>// MITRE ATT&amp;CK</h2>
+    <p>
+      <span class="mitre-tag">T1566.002 — Spearphishing Link</span>
+      <span class="mitre-tag">T1036 — Masquerading (spoofed sender)</span>
+    </p>
+
+    <!-- Takeaways -->
+    <h2>// Key Takeaways</h2>
+    <p>
+      The main lesson here was not treating all 5 alerts the same. Two were noisy rules, three were
+      an actual attack chain. The firewall block (#8816) only made sense after correlating it with
+      the email timestamps — that's the kind of pivoting that matters in real triage.
+    </p>
+    <p>
+      bit.ly links in emails are almost always a red flag. Never trust a shortened URL in an
+      unsolicited email.
+    </p>
+
+  </div>
+
+  <footer>
+    <div class="container">
+      <p>hossam_hashem@outlook.com &nbsp;·&nbsp; Alexandria, Egypt</p>
+    </div>
+  </footer>
+
+</body>
+</html>
