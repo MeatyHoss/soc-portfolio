@@ -2,7 +2,7 @@
 
 SOC analyst portfolio — Hossam Hashem
 
-Live site: https://hossamhashem47.github.io/soc-portfolio (enabled via GitHub Pages → main branch root)
+Live site: https://meatyhoss.github.io/soc-portfolio/ (enabled via GitHub Pages → main branch root)
 
 ## Structure
 
