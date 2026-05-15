@@ -168,6 +168,11 @@ tbody td { padding: .7rem .9rem; vertical-align: middle; }
   font-weight: 700;
   font-size: .75rem;
 }
+.verdict-wip {
+  color: var(--accent2);
+  font-weight: 700;
+  font-size: .75rem;
+}
 .action-link {
   color: var(--accent2);
   font-size: .8rem;
@@ -178,6 +183,53 @@ tbody td { padding: .7rem .9rem; vertical-align: middle; }
   transition: border-color .15s, color .15s;
 }
 .action-link:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+
+/* ── Skill tags ── */
+.skill-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+.skill-tag {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: .3rem .75rem;
+  font-size: .78rem;
+  color: var(--accent);
+  background: var(--surface);
+  letter-spacing: .03em;
+}
+
+/* ── About / Contact ── */
+.about-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1.25rem 1.5rem;
+  max-width: 640px;
+}
+.about-block p {
+  font-size: .88rem;
+  color: var(--text);
+  margin-bottom: .35rem;
+}
+.about-block p:last-of-type { margin-bottom: 1rem; }
+.contact-links { display: flex; flex-direction: column; gap: .45rem; }
+.contact-item {
+  font-size: .82rem;
+  color: var(--accent2);
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+}
+.contact-item:hover { color: var(--accent); text-decoration: none; }
+.contact-label {
+  color: var(--muted);
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  min-width: 4.5rem;
+}
 
 /* ── Footer ── */
 footer {
