@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BOTSv1 APT &amp; Ransomware — Hossam Hashem</title>
+  <link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="container">
+      <span>soc-portfolio / investigations / botsv1-apt-ransomware</span>
+      <span class="status">COMPLETED — APT + Ransomware</span>
+    </div>
+  </div>
+
+  <div class="report-body">
+
+    <a class="back-link" href="../index.html">← Back to case log</a>
+
+    <div class="closed-banner">✔ Completed — Two-scenario investigation: APT defacement + Cerber ransomware</div>
+
+    <h1>Boss of the SOC v1 — APT &amp; Ransomware Investigation</h1>
+
+    <div class="report-meta">
+      <span class="key">Platform</span>  <span class="val">Splunk — BOTSv1 Dataset</span>
+      <span class="key">Context</span>   <span class="val">NTI Graduation Project</span>
+      <span class="key">Tools</span>     <span class="val">Splunk · Suricata · Zeek · VirusTotal · ThreatMiner</span>
+      <span class="key">Period</span>    <span class="val">04/2025 – 05/2025</span>
+      <span class="key">Analyst</span>   <span class="val">Hossam Hashem</span>
+    </div>
+
+    <!-- Overview -->
+    <h2>// Overview</h2>
+    <p>
+      Two-scenario investigation on the BOTSv1 dataset, playing as a SOC analyst for Wayne Enterprises.
+      The first scenario was an APT intrusion by the <strong style="color:var(--accent2)">Po1s0n1vy</strong> group that ended
+      in website defacement. The second was a <strong style="color:var(--danger)">Cerber ransomware</strong> infection on an
+      internal workstation. Both investigated entirely through Splunk using HTTP, DNS, Suricata, Zeek,
+      and endpoint logs.
+    </p>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SCENARIO 1 -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <h2>// Scenario 1 — APT: Website Defacement (Po1s0n1vy)</h2>
+
+    <p>
+      Wayne Enterprises' website <code>imreallynotbatman.com</code> was reported defaced.
+      Goal: trace the attack from recon through to defacement using the Kill Chain model.
+    </p>
+
+    <div class="alert-block tp">
+      <strong>Recon &amp; Initial Access</strong>
+      <p style="margin-top:.5rem; margin-bottom:.5rem;">
+        Filtered HTTP traffic to <code>imreallynotbatman.com</code> and sorted by source IP volume.
+        Two IPs stood out — <code>40.80.148.42</code> was hammering the server with thousands of
+        requests. Suricata logs confirmed it was running Acunetix vulnerability scans and attempting
+        SQL injection.
+      </p>
+<pre>index=botsv1 sourcetype="stream:http" imreallynotbatman.com
+| stats count by src_ip
+| sort - count</pre>
+      <p style="margin-bottom:0;">
+        The second suspicious IP, <code>23.22.63.114</code>, was cross-referenced on VirusTotal and
+        ThreatMiner — tied to the Po1s0n1vy APT group, hosting phishing domains mimicking Wayne Enterprises.
+      </p>
+    </div>
+
+    <div class="alert-block tp">
+      <strong>Exploitation — Brute Force &amp; CMS Compromise</strong>
+      <p style="margin-top:.5rem; margin-bottom:.5rem;">
+        The attacker brute-forced the Joomla admin login at
+        <code>/joomla/administrator/index.php</code> via POST requests. Extracted passwords from the
+        <code>form_data</code> field using rex:
+      </p>
+<pre>index=botsv1 sourcetype="stream:http" dest_ip="192.168.250.70" http_method=POST
+uri=/joomla/administrator/index.php
+| rex field=form_data "passwd=(?&lt;password&gt;\w+)"
+| sort _time
+| table _time src_ip password</pre>
+      <p style="margin-bottom:0;">
+        Identified the correct password that granted access and calculated time elapsed between the
+        cracked password and the successful login.
+      </p>
+    </div>
+
+    <div class="alert-block tp">
+      <strong>Post-Compromise — Defacement</strong>
+      <p style="margin-top:.5rem; margin-bottom:0;">
+        After gaining access, the attacker uploaded a defacement image to the web server. Traced the
+        file back to a staging server at <code>23.22.63.114</code> using dynamic DNS. Found the
+        defacement filename by reviewing GET requests from the attacker's IP to the server.
+      </p>
+    </div>
+
+    <div class="alert-block tp">
+      <strong>Spearphishing Malware — OSINT</strong>
+      <p style="margin-top:.5rem; margin-bottom:0;">
+        GCPD intel indicated Po1s0n1vy also uses spearphishing as a fallback. Searched VirusTotal for
+        files communicating with <code>23.22.63.114</code> — found
+        <code>MirandaTateScreensaver.scr.exe</code> with SHA256:
+        <code style="color:var(--warn); word-break:break-all;">9709473ab351387aab9e816eff3910b9f28a7a70202e250ed46dba8f820f34a8</code>
+      </p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SCENARIO 2 -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <h2>// Scenario 2 — Ransomware: Cerber Infection (we8105desk)</h2>
+
+    <p>
+      User Bob Smith's workstation (<code>we8105desk</code>, IP <code>192.168.250.100</code>) was hit
+      with Cerber ransomware. Files encrypted, ransom note displayed.
+    </p>
+
+    <div class="alert-block tp">
+      <strong>Initial Infection Vector</strong>
+      <p style="margin-top:.5rem; margin-bottom:.5rem;">
+        Checked DNS logs from the workstation around the infection time. First suspicious domain
+        visited was <code>solidaritedeproximite.org</code>.
+      </p>
+<pre>index=botsv1 sourcetype="stream:dns" src_ip="192.168.250.100"
+| table _time, query
+| sort _time</pre>
+    </div>
+
+    <div class="alert-block tp">
+      <strong>Malware Delivery</strong>
+      <p style="margin-top:.5rem; margin-bottom:0;">
+        Queried HTTP GET requests from the workstation to the suspicious domain — found a file
+        downloaded called <code>mhtr.jpg</code>. Despite the <code>.jpg</code> extension, research
+        confirmed this was the Cerber cryptor payload (obfuscation via fake extension).
+      </p>
+    </div>
+
+    <div class="alert-block tp">
+      <strong>Execution &amp; Lateral Movement</strong>
+      <p style="margin-top:.5rem; margin-bottom:0;">
+        A VB script was launched during the infection phase — found in Splunk endpoint logs prepended
+        by the launching <code>.exe</code> name. Parent process of <code>121214.tmp</code> traced to
+        PID <code>3968</code>. Verified the workstation was connected to a file server at
+        <code>192.168.250.20</code> and checked for spread indicators.
+      </p>
+    </div>
+
+    <div class="alert-block tp">
+      <strong>Suricata Detection</strong>
+      <p style="margin-top:.5rem; margin-bottom:.5rem;">
+        Cerber generated <strong>21,596</strong> Suricata alerts. Filtered by signature ID to find
+        the least-noisy signature — <code>2816763</code>. Also traced the FQDN Cerber tried to
+        redirect the user to at the end of the encryption phase via DNS logs.
+      </p>
+<pre>index=botsv1 sourcetype="suricata" cerber
+| stats count by alert.signature_id
+| sort count</pre>
+    </div>
+
+    <!-- MITRE -->
+    <h2>// MITRE ATT&amp;CK Coverage</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Tactic</th><th>Technique</th><th>ID</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Reconnaissance</td>    <td>Active Scanning</td>                  <td><span class="mitre-tag">T1595</span></td>     <td>APT</td></tr>
+          <tr><td>Initial Access</td>    <td>Exploit Public-Facing Application</td><td><span class="mitre-tag">T1190</span></td>     <td>APT</td></tr>
+          <tr><td>Credential Access</td> <td>Brute Force</td>                      <td><span class="mitre-tag">T1110</span></td>     <td>APT</td></tr>
+          <tr><td>Initial Access</td>    <td>Spearphishing Attachment</td>         <td><span class="mitre-tag">T1566.001</span></td> <td>APT</td></tr>
+          <tr><td>Execution</td>         <td>User Execution</td>                   <td><span class="mitre-tag">T1204</span></td>     <td>Ransomware</td></tr>
+          <tr><td>C2</td>                <td>Application Layer Protocol</td>       <td><span class="mitre-tag">T1071</span></td>     <td>Ransomware</td></tr>
+          <tr><td>Impact</td>            <td>Data Encrypted for Impact</td>        <td><span class="mitre-tag">T1486</span></td>     <td>Ransomware</td></tr>
+          <tr><td>Lateral Movement</td>  <td>Remote Services</td>                  <td><span class="mitre-tag">T1021</span></td>     <td>Ransomware</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- IOCs -->
+    <h2>// IOCs</h2>
+    <div class="table-wrap">
+      <table class="ioc-table">
+        <thead>
+          <tr><th>Type</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Attacker IP (scanner)</td>  <td><code>40.80.148.42</code></td></tr>
+          <tr><td>Attacker IP (C2/staging)</td><td><code>23.22.63.114</code></td></tr>
+          <tr><td>Malware SHA256</td>          <td><code style="word-break:break-all;">9709473ab351387aab9e816eff3910b9f28a7a70202e250ed46dba8f820f34a8</code></td></tr>
+          <tr><td>Ransomware C2 domain</td>    <td><code>solidaritedeproximite.org</code></td></tr>
+          <tr><td>Ransomware payload</td>      <td><code>mhtr.jpg</code> (fake extension — Cerber cryptor)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Takeaways -->
+    <h2>// Key Takeaways</h2>
+    <p>
+      This was the most complete investigation I had done at that point. Having two separate scenarios
+      in the same dataset was useful because it forced a context switch — external APT mindset
+      (recon → brute force → defacement) vs. internal ransomware mindset
+      (endpoint logs → lateral movement → impact).
+    </p>
+    <p>
+      The Cerber scenario reinforced that file extensions mean nothing — always check actual file
+      content and cross-reference hashes. The APT scenario showed how much you can pivot from a
+      single suspicious IP in Suricata logs. Threat intel sources like VirusTotal and ThreatMiner
+      filled gaps that Splunk alone couldn't answer.
+    </p>
+    <p>
+      Suricata and Zeek logs were the backbone of both investigations — without them the HTTP traffic
+      alone wouldn't have told the full story.
+    </p>
+
+  </div>
+
+  <footer>
+    <div class="container">
+      <p>hossam_hashem@outlook.com &nbsp;·&nbsp; Alexandria, Egypt</p>
+    </div>
+  </footer>
+
+</body>
+</html>

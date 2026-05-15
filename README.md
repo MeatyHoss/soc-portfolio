@@ -21,3 +21,4 @@ soc-portfolio/
 | # | Case | Platform | Category | Verdict |
 |---|------|----------|----------|---------|
 | 001 | THM Phishing Sim — 5-Alert Queue | TryHackMe SOC Sim | Phishing / Email Analysis | 3 TP · 2 FP |
+| 002 | BOTSv1 — APT Defacement & Cerber Ransomware | Splunk BOTSv1 | APT / Ransomware | 2 Scenarios · Full Kill Chain |
